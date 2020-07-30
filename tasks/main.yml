@@ -1,0 +1,58 @@
+- name: Install required system packages
+  apt: name={{ item }} state=latest update_cache=yes
+  loop: [
+    'ifupdown',
+    'ifenslave',
+    ]
+  tags: interfaces
+
+- name: Configure /etc/network/interfaces
+  template:
+    src: templates/interfaces.j2
+    dest: /etc/network/interfaces
+    backup: yes
+  tags: interfaces
+
+- name: Remove /etc/network/interfaces.d/eth0
+  file:
+    path: /etc/network/interfaces.d/eth0
+    state: absent
+  tags: interfaces
+
+- name: Remove /etc/netplan/01-netcfg.yaml
+  file:
+    path: /etc/netplan/01-netcfg.yaml
+    state: absent
+  tags: interfaces
+
+- name: Remove /etc/netplan/50-cloud-init.yaml
+  file:
+    path: /etc/netplan/50-cloud-init.yaml
+    state: absent
+  tags: interfaces
+
+- name: Add the bonding module
+  modprobe:
+   name: bonding
+   state: present
+  tags: interfaces
+
+- name: Add the 8021q module
+  modprobe:
+   name: 8021q
+   state: present
+  tags: interfaces
+
+- name: Make sure 8021q\dot1q makes it into /etc/modules for loading at boot time
+  lineinfile:
+    path: /etc/modules
+    state: present
+    line: '8021q'
+  tags: interfaces
+
+- name: Make sure bonding makes it into /etc/modules for loading at boot time
+  lineinfile:
+    path: /etc/modules
+    state: present
+    line: 'bonding'
+  tags: interfaces

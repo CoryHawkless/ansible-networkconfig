@@ -1,0 +1,126 @@
+auto lo
+        iface lo inet loopback
+{% if host_loopback_IP is defined %}
+auto lo:1
+iface lo:1 inet static
+        address {{host_loopback_IP}}/32
+{% endif %}
+
+{% if OOBNET_NIC is defined %}
+auto {{OOBNET_NIC}}
+allow-hotplug {{OOBNET_NIC}}
+iface {{OOBNET_NIC}} inet static
+        address {{OOBNET_IP}}/{{OOBNET_Netmask}}
+{% endif %}
+
+{% if autobgp_interfaces is defined %}
+{%   for item in autobgp_interfaces %}
+
+auto {{ item['name'] }}
+allow-hotplug {{ item['name'] }}
+iface {{ item['name'] }} inet static
+	address {{host_loopback_IP}}/32
+{% if item['mtu'] is defined %}
+	mtu {{ item['mtu'] }}
+{% endif %}
+{%         if item['force10G'] is defined and item['force10G']|lower == "true" %}
+	#Force speed to 10G
+	post-up sudo ethtool -s {{ item['name'] }} autoneg off
+	post-up sudo ethtool -s {{ item['name'] }} speed 10000
+{%         endif %}
+{%         if item['force40G'] is defined and item['force40G']|lower == "true" %}
+	#Force speed to 40G
+	pre-up sudo ethtool -s {{ item['name'] }} autoneg off
+	pre-up sudo ethtool -s {{ item['name'] }} speed 40000
+{%         endif %}
+{%         if item['auto40G'] is defined and item['auto40G']|lower == "true" %}
+	#Auto speed
+	pre-up sudo /bin/ip link set down {{ item['name'] }} && sleep 1
+	pre-up sudo ethtool -s {{ item['name'] }}  speed 40000 duplex full autoneg on
+	post-up sudo /bin/ip link set up {{ item['name'] }}
+
+{%         endif %}
+{%   endfor %}
+{% endif %}
+
+{% if addressed_interfaces is defined and addressed_interfaces != [] %}
+{% for item in addressed_interfaces %}
+
+auto {{ item['name'] }}
+allow-hotplug {{ item['name'] }}
+iface {{ item['name'] }} inet static
+	address {{item['ip_address']}}/{{item['ip_netmask']}}
+{% if item['mtu'] is defined %}
+	mtu {{ item['mtu'] }}
+{% endif %}
+{% if item['ip_gateway'] is defined %}
+	gateway {{item['ip_gateway']}}
+{% endif %}
+{% if item['force10G'] is defined and item['force10G']|lower == "true" %}
+	post-up sudo ethtool -s {{ item['name'] }} autoneg off
+	post-up sudo ethtool -s {{ item['name'] }} speed 10000
+{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if bond_interfaces is defined and bond_interfaces != [] %}
+{%   for item in bond_interfaces %}
+{%   for slave in item['slaves'] %}
+auto {{slave['name']}}
+iface {{slave['name']}} inet manual
+    bond-master {{ item['name'] }}
+{% endfor %}
+
+auto {{ item['name'] }}
+{% if item['ip_address'] is defined %}
+    iface {{ item['name'] }} inet static
+	address {{item['ip_address']}}/{{item['ip_netmask']}}
+{% else %}
+    iface {{ item['name'] }} inet manual
+{% endif %}
+{% if item['ip_gateway'] is defined %}
+	gateway {{item['ip_gateway']}}
+{% endif %}
+{% if item['mtu'] is defined %}
+	mtu {{ item['mtu'] }}
+{% endif %}
+	bond-mode active-backup
+	bond-miimon 100
+	bond-slaves none
+{% endfor %}
+{% endif %}
+
+
+
+{% if vlan_interfaces is defined and vlan_interfaces != [] %}
+{%   for item in vlan_interfaces %}
+auto {{ item['name'] }}
+{% if item['ip_address'] is defined %}
+iface {{ item['name'] }} inet static
+    address {{item['ip_address']}}/{{item['ip_netmask']}}
+{% else %}
+    iface {{ item['name'] }} inet manual
+{% endif %}
+{% if item['ip_gateway'] is defined %}
+    gateway {{item['ip_gateway']}}
+{% endif %}
+{% if item['mtu'] is defined %}
+	mtu {{ item['mtu'] }}
+{% endif %}
+    vlan-raw-device {{ item['vlan-raw-device'] }}
+{% endfor %}
+{% endif %}
+
+
+
+
+
+
+{% if unused_interfaces is defined and unused_interfaces != [] %}
+{%   for item in unused_interfaces %}
+
+allow-hotplug {{ item['name'] }}
+iface {{ item['name'] }} inet manual
+{% endfor %}
+{% endif %}

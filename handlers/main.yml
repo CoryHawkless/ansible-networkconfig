@@ -1,0 +1,4 @@
+---
+
+- name: restart frr-docker
+  action: service name=frr-docker enabled=yes state=restarted
