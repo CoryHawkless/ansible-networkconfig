@@ -11,6 +11,7 @@ auto {{OOBNET_NIC}}
 allow-hotplug {{OOBNET_NIC}}
 iface {{OOBNET_NIC}} inet static
         address {{OOBNET_IP}}/{{OOBNET_Netmask}}
+        {% if OOBNET_GW is defined %}gateway {{OOBNET_GW}}{% endif %}
 {% endif %}
 
 {% if autobgp_interfaces is defined %}
